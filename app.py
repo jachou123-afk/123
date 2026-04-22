@@ -3,7 +3,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 import io
 
 st.set_page_config(page_title="商品圖合成工具", layout="centered")
-st.title("📦 商品四宮格合成工具 (升級版)")
+st.title("📦 商品四宮格合成工具 (滿格美化版)")
 
 uploaded_files = st.file_uploader("請一次框選或拖曳 2~3 張圖片到這裡", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
 
@@ -27,23 +27,25 @@ if st.button("🚀 生成合成圖", use_container_width=True):
             cell_size = 500
             canvas = Image.new('RGB', (cell_size * 2, cell_size * 2), 'white')
 
-            def resize_and_pad(img_file):
+            # ✅ 升級功能：換成智能剪裁 (ImageOps.fit)！塞滿格子，不留白邊！
+            def resize_and_crop(img_file):
                 img = Image.open(img_file).convert("RGB")
-                return ImageOps.pad(img, (cell_size, cell_size), color="white")
+                # ImageOps.fit 會自動將圖片等比縮放並剪裁到指定尺寸，保證填滿格子且中央對齊
+                return ImageOps.fit(img, (cell_size, cell_size), method=Image.Resampling.LANCZOS)
 
-            img1 = resize_and_pad(uploaded_files[0])
-            img2 = resize_and_pad(uploaded_files[1])
+            img1 = resize_and_crop(uploaded_files[0])
+            img2 = resize_and_crop(uploaded_files[1])
             canvas.paste(img1, (0, 0))              
             canvas.paste(img2, (cell_size, 0))      
             
             if len(uploaded_files) >= 3:
-                img3 = resize_and_pad(uploaded_files[2])
+                img3 = resize_and_crop(uploaded_files[2])
                 canvas.paste(img3, (cell_size, cell_size)) 
 
             draw = ImageDraw.Draw(canvas)
             
             try:
-                # 注意：這裡的字體檔名必須跟你上傳到 GitHub 的大小寫一模一樣！
+                # 這裡假設你的字體檔是全小寫，如果 GitHub 上是大寫，請改成大寫
                 font_title = ImageFont.truetype("msjhbd.ttc", 40) 
                 font_body = ImageFont.truetype("msjh.ttc", 32)    
             except IOError:
@@ -71,6 +73,7 @@ if st.button("🚀 生成合成圖", use_container_width=True):
             st.image(canvas, caption="生成的商品圖", use_container_width=True)
 
             buf = io.BytesIO()
+            # ✅ 提升儲存圖片的畫質參數 (quality=95)
             canvas.save(buf, format="JPEG", quality=95)
             byte_im = buf.getvalue()
             
