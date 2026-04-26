@@ -4,16 +4,12 @@ import io
 import re
 
 st.set_page_config(page_title="商品圖合成工具", layout="centered")
-st.title("📦 商品四宮格合成工具 (專業排版美化版)")
+st.title("📦 商品四宮格合成工具 (可愛圓體+星標版)")
 
-# 1. 圖片上傳區
 uploaded_files = st.file_uploader("請一次框選或拖曳 2~3 張圖片到這裡", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
-
-# 2. 文案輸入區
 st.header("2. 貼上原始廣告文案")
 raw_description = st.text_area("直接貼上整段文案，系統會自動無視連結、雜訊並美化排版", height=200)
 
-# 3. 圖片微調與即時預覽區
 if uploaded_files and len(uploaded_files) >= 2:
     st.divider()
     st.header("🛠️ 調整圖片位置")
@@ -28,34 +24,27 @@ if uploaded_files and len(uploaded_files) >= 2:
             dy = st.slider(f"↕️ 上下", -300, 300, 0, 10, key=f"y_{i}")
             adjustments.append((zoom, dx, dy))
 
-    # --- 核心邏輯：自動淨化與美化文字 ---
-    # 1. 基礎清理
+    # --- 基礎清理 ---
     raw_lines = [line.strip() for line in raw_description.split('\n') if line.strip()]
     cleaned_lines = []
-    # 定義雜訊關鍵字
     ignore_keywords = ["http", "lin.ee", "有問題請私小幫手"]
     for line in raw_lines:
-        # 自動無視連結與特定語句
         if not any(kw in line for kw in ignore_keywords):
             cleaned_lines.append(line)
     
-    # 2. 文字細節處理：移除「免運」
     final_lines = [line.replace("免運", "").strip() for line in cleaned_lines if line.replace("免運", "").strip()]
     
-    # 3. 自動代碼高亮偵測：偵測第一行是否含有代碼（例如 K322）
+    # 自動代碼高亮偵測
     product_code = ""
     title_text = ""
     if final_lines:
         first_line = final_lines[0]
-        # 使用正則表達式嘗試拆分代碼 (例如：K322 合金坦克...)
         match_code = re.match(r'^([A-Z]*\d+[A-Z]*\s*)\s*(.*)', first_line)
         if match_code:
             product_code = match_code.group(1).strip()
             title_text = match_code.group(2).strip()
         else:
-            # 沒偵測到代碼就用預設置中
             title_text = first_line
-    # --------------------------
 
     cell_size = 500
     canvas = Image.new('RGB', (cell_size * 2, cell_size * 2), 'white')
@@ -74,7 +63,6 @@ if uploaded_files and len(uploaded_files) >= 2:
         return bg
 
     try:
-        # 繪製圖片格
         img1 = process_img(uploaded_files[0], *adjustments[0])
         img2 = process_img(uploaded_files[1], *adjustments[1])
         canvas.paste(img1, (0, 0))
@@ -84,75 +72,72 @@ if uploaded_files and len(uploaded_files) >= 2:
             canvas.paste(img3, (cell_size, cell_size))
 
         draw = ImageDraw.Draw(canvas)
+        
+        # ⚠️ 讀取你剛剛上傳的可愛字體 cute.ttf
         try:
-            font_title = ImageFont.truetype("msjhbd.ttc", 44) # 標題更大更粗
-            font_body = ImageFont.truetype("msjh.ttc", 30)    # 內文精緻深灰
-            font_logistics = ImageFont.truetype("msjh.ttc", 26) # 物流灰色小字
+            font_title = ImageFont.truetype("cute.ttf", 46) 
+            font_body = ImageFont.truetype("cute.ttf", 34)    
+            font_logistics = ImageFont.truetype("cute.ttf", 28) 
         except IOError:
+            st.error("找不到 cute.ttf 字體檔！請確認你有把字體上傳到 GitHub，並且檔名全小寫。")
             font_title = font_body = font_logistics = ImageFont.load_default()
 
-        # 墨綠色主框線 (#006655)
-        teal_color = "#006655"
-        draw.rectangle([10, cell_size + 10, cell_size - 10, cell_size * 2 - 10], outline=teal_color, width=8)
+        # 畫主邊框 (改為圓體風格常用的黑色粗框，更像圖卡)
+        draw.rectangle([10, cell_size + 10, cell_size - 10, cell_size * 2 - 10], outline="#222222", width=8)
 
-        # --- 繪製專業美化排版文字 ---
         if final_lines:
-            # 1. 標題繪製 (含自動高亮代碼)
             text_x_start = 30
             y_offset = cell_size + 40
             
             if product_code:
-                # 取得代碼寬度以繪製實心框
+                # 代碼紅底白字
                 code_bbox = draw.textbbox((0, 0), product_code, font=font_title)
                 code_w = code_bbox[2] - code_bbox[0]
-                code_h = code_bbox[3] - code_bbox[1] + 10 # 增加高度填滿感
-                
-                # 實心墨綠色框
-                draw.rectangle([(text_x_start, y_offset), (text_x_start + code_w + 16, y_offset + code_h)], fill=teal_color)
-                # 白色代碼
+                code_h = code_bbox[3] - code_bbox[1] + 10 
+                draw.rectangle([(text_x_start, y_offset), (text_x_start + code_w + 16, y_offset + code_h)], fill="#E53935", radius=8) # 圓角矩形
                 draw.text((text_x_start + 8, y_offset + 5), product_code, font=font_title, fill="white")
                 
-                # 置中商品全稱（位於代碼框框右側）
+                # 商品全稱
                 full_title_bbox = draw.textbbox((0, 0), title_text, font=font_title)
                 full_title_w = full_title_bbox[2] - full_title_bbox[0]
                 draw.text(((cell_size - full_title_w) // 2 + (text_x_start + code_w + 16) // 2, y_offset + 5), title_text, font=font_title, fill="black")
-
             else:
-                # 沒代碼則全部置中
                 bbox = draw.textbbox((0, 0), title_text, font=font_title)
                 title_w = bbox[2] - bbox[0]
                 draw.text(((cell_size - title_w) // 2, y_offset), title_text, font=font_title, fill="black")
             
-            # 2. 優雅銀灰色分隔線線
-            line_y = cell_size + 98
-            draw.line([(50, line_y), (450, line_y)], fill="#C0C0C0", width=1)
+            line_y = cell_size + 105
+            draw.line([(50, line_y), (450, line_y)], fill="#CCCCCC", width=2)
 
-            # 3. 內文繪製 (第二行開始，自動群組排版)
-            y_offset = line_y + 35
-            spec_x_start = 40
+            y_offset = line_y + 30
+            spec_x_start = 35
             logistics_lines = []
             
             for i in range(1, len(final_lines)):
                 current_line = final_lines[i]
-                
-                # 自動識別「◎」開頭為物流備註
                 if "◎" in current_line:
                     logistics_lines.append(current_line)
                 else:
-                    # 優雅清爽的點點
-                    bullet_text = f"• {current_line}"
-                    draw.text((spec_x_start, y_offset), bullet_text, font=font_body, fill="#333333")
-                    y_offset += 48 # 加大行距，避免擁擠
+                    # 換成星星符號 ★
+                    bullet_text = f"★ {current_line}"
+                    
+                    # 自動偵測是否為價格行，如果是就標成紅色
+                    if "起批" in current_line or "元" in current_line or "$" in current_line:
+                        text_color = "#D32F2F" # 紅色
+                    else:
+                        text_color = "#222222" # 黑色
+                        
+                    draw.text((spec_x_start, y_offset), bullet_text, font=font_body, fill=text_color)
+                    y_offset += 52
 
-            # 4. 物流灰色小字單獨呈現 (格子最底部)
             if logistics_lines:
-                y_offset_logistics = cell_size * 2 - 40 # 底部留白
-                for log in reversed(logistics_lines): # 從底部向上推
-                    draw.text((40, y_offset_logistics - 35), log, font=font_logistics, fill="#888888")
+                y_offset_logistics = cell_size * 2 - 40 
+                for log in reversed(logistics_lines): 
+                    draw.text((35, y_offset_logistics - 35), log, font=font_logistics, fill="#666666")
                     y_offset_logistics -= 35
 
         st.divider()
-        st.image(canvas, caption="✨ 排版已自動升級：代碼高亮、分隔線、清爽清單、灰色備註", use_container_width=True)
+        st.image(canvas, caption="✨ 圓體星標紅字預覽版", use_container_width=True)
 
         buf = io.BytesIO()
         canvas.save(buf, format="JPEG", quality=95)
@@ -160,9 +145,9 @@ if uploaded_files and len(uploaded_files) >= 2:
         file_name_prefix = final_lines[0].split(' ')[0] if final_lines else "商品"
         
         st.download_button(
-            label="📥 排版很漂亮，點此下載！",
+            label="📥 滿意的話，點此下載！",
             data=byte_im,
-            file_name=f"{file_name_prefix}_專業排版圖.jpg",
+            file_name=f"{file_name_prefix}_圓體排版圖.jpg",
             mime="image/jpeg",
             use_container_width=True
         )
