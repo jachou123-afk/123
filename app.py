@@ -73,7 +73,6 @@ if uploaded_files and len(uploaded_files) >= 2:
 
         draw = ImageDraw.Draw(canvas)
         
-        # ⚠️ 讀取你剛剛上傳的可愛字體 cute.ttf
         try:
             font_title = ImageFont.truetype("cute.ttf", 46) 
             font_body = ImageFont.truetype("cute.ttf", 34)    
@@ -82,7 +81,7 @@ if uploaded_files and len(uploaded_files) >= 2:
             st.error("找不到 cute.ttf 字體檔！請確認你有把字體上傳到 GitHub，並且檔名全小寫。")
             font_title = font_body = font_logistics = ImageFont.load_default()
 
-        # 畫主邊框 (改為圓體風格常用的黑色粗框，更像圖卡)
+        # 畫主邊框
         draw.rectangle([10, cell_size + 10, cell_size - 10, cell_size * 2 - 10], outline="#222222", width=8)
 
         if final_lines:
@@ -90,14 +89,13 @@ if uploaded_files and len(uploaded_files) >= 2:
             y_offset = cell_size + 40
             
             if product_code:
-                # 代碼紅底白字
+                # 這裡修復了：改用 rounded_rectangle 畫圓角矩形
                 code_bbox = draw.textbbox((0, 0), product_code, font=font_title)
                 code_w = code_bbox[2] - code_bbox[0]
                 code_h = code_bbox[3] - code_bbox[1] + 10 
-                draw.rectangle([(text_x_start, y_offset), (text_x_start + code_w + 16, y_offset + code_h)], fill="#E53935", radius=8) # 圓角矩形
+                draw.rounded_rectangle([(text_x_start, y_offset), (text_x_start + code_w + 16, y_offset + code_h)], fill="#E53935", radius=8) 
                 draw.text((text_x_start + 8, y_offset + 5), product_code, font=font_title, fill="white")
                 
-                # 商品全稱
                 full_title_bbox = draw.textbbox((0, 0), title_text, font=font_title)
                 full_title_w = full_title_bbox[2] - full_title_bbox[0]
                 draw.text(((cell_size - full_title_w) // 2 + (text_x_start + code_w + 16) // 2, y_offset + 5), title_text, font=font_title, fill="black")
@@ -118,14 +116,11 @@ if uploaded_files and len(uploaded_files) >= 2:
                 if "◎" in current_line:
                     logistics_lines.append(current_line)
                 else:
-                    # 換成星星符號 ★
                     bullet_text = f"★ {current_line}"
-                    
-                    # 自動偵測是否為價格行，如果是就標成紅色
                     if "起批" in current_line or "元" in current_line or "$" in current_line:
-                        text_color = "#D32F2F" # 紅色
+                        text_color = "#D32F2F" 
                     else:
-                        text_color = "#222222" # 黑色
+                        text_color = "#222222" 
                         
                     draw.text((spec_x_start, y_offset), bullet_text, font=font_body, fill=text_color)
                     y_offset += 52
